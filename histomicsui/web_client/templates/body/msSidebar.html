@@ -1,0 +1,93 @@
+<div class="ms-main">
+    <form>
+      <div class="form-group">
+        <label for="ms-primary-tumor-differentiation">Primary Tumor Differentiation</label>
+        <select class="form-control" id="ms-primary-tumor-differentiation">
+          <option value="" selected="">Choose...</option>
+          <option value="diff_1">Well Differentiated</option>
+          <option value="diff_2">Moderately Differentiated</option>
+          <option value="diff_3">Poorly Differentiated</option>
+          <option value="diff_4">Undifferentiated</option>
+          <option value="diff_5">Uncertain (Well to Moderately
+            Differentiated)</option>
+          <option value="diff_6">Uncertain (Moderate to Poorly
+            Differentiated)</option>
+          <option value="diff_7">Uncertain (Likely Well Differentiated)</option>
+          <option value="diff_8">Uncertain (Likely Moderately
+            Differentiated)</option>
+          <option value="diff_9">Uncertain (Likely Poorly Differentiated)</option>
+          <option value="diff_10">Could not be assessed</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="ms-primary-tumor-depth">Primary Tumor Depth (in mm)</label>
+        <input type="number" class="form-control" id="ms-primary-tumor-depth" placeholder="Depth in mm">
+      </div>
+      <div class="form-group">
+        <label for="ms-primary-tumor-depth-invasion">Primary Tumor Depth of Invasion</label>
+        <select class="form-control" id="ms-primary-tumor-depth-invasion">
+          <option value="" selected="">Choose...</option>
+          <option value="dermis">Dermis</option>
+          <option value="fat">Subcutaneous Fat</option>
+          <option value="cartilage">Cartilage</option>
+          <option value="muscle">Muscle</option>
+          <option value="fascia">Fascia</option>
+          <option value="bone">Bone</option>
+          <option value="unknown">Unknown</option>
+          <option value="atleastdermis">At Least Dermis</option>
+          <option value="transectedatdermis">But Transected at Dermis</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="ms-primary-tumor-transected">Primary Tumor Transected at Base</label>
+        <select class="form-control" id="ms-primary-tumor-transected">
+          <option value="" selected="">Choose...</option>
+          <option value="yes">Yes</option>
+          <option value="no">No</option>
+          <option value="notassessed">Could not be assessed</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="ms-acantholytic-histological-pattern">Acantholytic Histological Pattern</label>
+        <select class="form-control" id="ms-acantholytic-histological-pattern">
+          <option value="" selected="">Choose...</option>
+          <option value="yes">Yes</option>
+          <option value="no">No</option>
+          <option value="notassessed">Could not be assessed</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="ms-bowenoid-histological-pattern">Bowenoid Histological Pattern</label>
+        <select class="form-control" id="ms-bowenoid-histological-pattern">
+          <option value="" selected="">Choose...</option>
+          <option value="yes">Yes</option>
+          <option value="no">No</option>
+          <option value="notassessed">Could not be assessed</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="ms-perineural-invasion">Perineural Invasion</label>
+        <select class="form-control" id="ms-perineural-invasion">
+          <option value="" selected="">Choose...</option>
+          <option value="yes">Yes</option>
+          <option value="no">No</option>
+          <option value="notassessed">Could not be assessed</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="ms-nerve-diameter">Diameter of Nerve Involved (in mm)</label>
+        <input type="number" class="form-control" id="ms-nerve-diameter" placeholder="Diameter in mm">
+      </div>
+      <div class="form-group">
+        <label for="ms-slide-passes-qc">Slide Passes QC</label>
+        <textarea class="form-control" id="ms-slide-passes-qc" rows="6"
+          placeholder="Please mention Yes or No. If it does not pass QC, please include the reason (not enough tumor; resolution/focus inadequate; staining abnormalities)"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="ms-slide-passes-qc">Clinical Notes</label>
+        <textarea class="form-control" id="ms-clinical-notes" rows="6"
+          placeholder="Enter Diagnostic Details (Optional)"></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary">Save</button>
+    </form>
+  </div>
