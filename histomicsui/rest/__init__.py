@@ -1,7 +1,8 @@
 from . import aperio, system, tcga
 from .hui_resource import HistomicsUIResource
 from .image_browse_resource import ImageBrowseResource
-
+from .clinician_data_resource import ClinicianDataResource
+from .mayo_heatmap_resource import MayoHeatmapResource
 
 def addEndpoints(apiRoot):
     """
@@ -16,4 +17,6 @@ def addEndpoints(apiRoot):
 
     ImageBrowseResource(apiRoot)
 
+    apiRoot.clinicianData = ClinicianDataResource()
     apiRoot.histomicsui = HistomicsUIResource()
+    apiRoot.mayoHeatmap = MayoHeatmapResource()

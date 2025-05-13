@@ -1,0 +1,22 @@
+extends ./panel.pug
+
+block title
+  | #[span.icon-picture] Heatmap
+
+block content
+  .h-heatmap-preview
+    img(src=`api/v1/item/${heatmapId}/tiles/thumbnail`)
+  .h-heatmap-controls
+    .input-group
+      input.h-heatmap-opacity-slider.form-control(
+        type="range", min=0, max=100, step=1, value=50, disabled=disabled)
+      span.h-heatmap-opacity-value.input-group-addon #{50}
+      //- span.h-heatmap-opacity-controls
+      //-   button#h-heatmap-opacity-increase.btn.btn-sm.btn-default.disabled(title="Increase heatmap opacity")
+      //-     i.icon-plus
+      //-   br
+      //-   button#h-heatmap-opacity-decrease.btn.btn-sm.btn-default.disabled(title="Decrease heatmap opacity")
+      //-     i.icon-minus
+    form#heatmap-upload-form.h-upload-button-container
+      input#heatmap-upload-button.btn-default.btn-sm.h-upload-button.h-upload-button-area(type="file", data-toggle="tooltip", title="Upload a new heatmap")
+    

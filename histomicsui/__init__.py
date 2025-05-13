@@ -49,6 +49,8 @@ from .models.cohort import Cohort
 from .models.image import Image
 from .models.pathology import Pathology
 from .models.slide import Slide
+from .models.clinician_data import ClinicianData
+from .models.mayo_heatmap import MayoHeatmap
 
 try:
     __version__ = get_distribution(__name__).version
@@ -406,7 +408,7 @@ class GirderPlugin(plugin.GirderPlugin):
         except Exception:
             logger.info('slicer_cli_web plugin is unavailable.  Analysis '
                         'tasks are therefore unavailable.')
-        plugin.getPlugin('large_image_annotation').load(info)
+        plugin.getPlugin('large_image_annotation').load(info)  
 
         # Support short login sessions
         handlers.shortLoginSessions()
@@ -420,6 +422,8 @@ class GirderPlugin(plugin.GirderPlugin):
         ModelImporter.registerModel('image', Image, 'histomicsui')
         ModelImporter.registerModel('pathology', Pathology, 'histomicsui')
         ModelImporter.registerModel('slide', Slide, 'histomicsui')
+        ModelImporter.registerModel('clinicianData', ClinicianData, 'histomicsui')
+        ModelImporter.registerModel('mayoHeatmap', MayoHeatmap, 'histomicsui')
 
         rest.addEndpoints(info['apiRoot'])
         info['serverRoot'].updateHtmlVars({

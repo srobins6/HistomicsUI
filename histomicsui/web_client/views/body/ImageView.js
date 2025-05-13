@@ -2,20 +2,20 @@
 import _ from 'underscore';
 import $ from 'jquery';
 
-import {restRequest} from '@girder/core/rest';
-import {getCurrentUser} from '@girder/core/auth';
-import {AccessType} from '@girder/core/constants';
+import { restRequest } from '@girder/core/rest';
+import { getCurrentUser } from '@girder/core/auth';
+import { AccessType } from '@girder/core/constants';
 import ItemModel from '@girder/core/models/ItemModel';
 import FileModel from '@girder/core/models/FileModel';
 import FolderCollection from '@girder/core/collections/FolderCollection';
-import {ViewerWidget} from '@girder/large_image_annotation/views';
+import { ViewerWidget } from '@girder/large_image_annotation/views';
 
 import SlicerPanelGroup from '@girder/slicer_cli_web/views/PanelGroup';
 import AnnotationModel from '@girder/large_image_annotation/models/AnnotationModel';
 import AnnotationCollection from '@girder/large_image_annotation/collections/AnnotationCollection';
 
-import {convert as convertToGeojson} from '@girder/large_image_annotation/annotations';
-import {convert as convertFromGeojson} from '@girder/large_image_annotation/annotations/geojs';
+import { convert as convertToGeojson } from '@girder/large_image_annotation/annotations';
+import { convert as convertFromGeojson } from '@girder/large_image_annotation/annotations/geojs';
 
 import StyleCollection from '../../collections/StyleCollection';
 import StyleModel from '../../models/StyleModel';
@@ -28,23 +28,26 @@ import OverviewWidget from '../../panels/OverviewWidget';
 import ZoomWidget from '../../panels/ZoomWidget';
 import FrameSelectorWidget from '../../panels/FrameSelectorWidget';
 import MetadataWidget from '../../panels/MetadataWidget';
+import MayoHeatmapWidget from '../../panels/MayoHeatmapWidget'
 import MetadataPlot from '../../panels/MetadataPlot';
 import DrawWidget from '../../panels/DrawWidget';
 import editElement from '../../dialogs/editElement';
 import router from '../../router';
 import events from '../../events';
-import {HuiSettings} from '../utils';
+import { HuiSettings } from '../utils';
 import View from '../View';
 
 import imageTemplate from '../../templates/body/image.pug';
 import '../../stylesheets/body/image.styl';
+import MayoImageViewer from '../imageViewer/MayoImageViewer.js';
 
 var ImageView = View.extend({
     events: {
         'keydown .h-image-body': '_onKeyDown',
-        click: '_clearTooltips',
+        'click .h-image': '_clearTooltips',
         'click .h-control-panel-container .s-close-panel-group': '_closeAnalysis',
-        'mousemove .geojs-map': '_trackMousePosition'
+        'mousemove .geojs-map': '_trackMousePosition',
+        'submit form#ms-main': '_saveClinicianData'
     },
     initialize(settings) {
         this._defaultGroup = 'default';
@@ -56,12 +59,12 @@ var ImageView = View.extend({
         this._selectElementsByRegionCanceled = false;
         this._debounceUpdatePixelmapValues = _.debounce(this._updatePixelmapValues, 500);
         this._overlayLayers = {};
-        this.selectedAnnotation = new AnnotationModel({_id: 'selected'});
+        this.selectedAnnotation = new AnnotationModel({ _id: 'selected' });
         this.selectedElements = this.selectedAnnotation.elements();
 
         // Allow zooming this many powers of 2 more than native pixel resolution
         this._increaseZoom2x = 1;
-        this._increaseZoom2xRange = {min: 1, max: 4};
+        this._increaseZoom2xRange = { min: 1, max: 4 };
 
         if (!this.model) {
             this.model = new ItemModel();
@@ -95,6 +98,10 @@ var ImageView = View.extend({
         this.metadataWidget = new MetadataWidget({
             parentView: this
         });
+        this.mayoHeatmapWidget = new MayoHeatmapWidget({
+            parentView: this,
+            image: this.model
+        });
         this.annotationSelector = new AnnotationSelector({
             parentView: this,
             collection: this.annotations,
@@ -124,7 +131,7 @@ var ImageView = View.extend({
         });
         this.listenTo(events, 'h:submit', (data) => {
             this.$('.s-jobs-panel .s-panel-controls .icon-down-open').click();
-            events.trigger('g:alert', {type: 'success', text: 'Analysis job submitted.'});
+            events.trigger('g:alert', { type: 'success', text: 'Analysis job submitted.' });
         });
         this.listenTo(events, 'h:select-region', this.showRegion);
         this.listenTo(this.annotationSelector.collection, 'add update change:displayed', this.toggleAnnotation);
@@ -151,7 +158,7 @@ var ImageView = View.extend({
         this.listenTo(events, 's:widgetChanged:region', this.widgetRegion);
         this.listenTo(events, 'g:login g:logout.success g:logout.error', () => {
             this._openId = null;
-            this.model.set({_id: null});
+            this.model.set({ _id: null });
             this._knownPanels = {};
             HuiSettings.clearSettingsCache();
         });
@@ -186,7 +193,17 @@ var ImageView = View.extend({
             this._orderPanels();
             return;
         }
-        this.$el.html(imageTemplate());
+
+        var template = imageTemplate(0)
+        if (this.model.id) {
+            var $el = $(jQuery.parseHTML(template))
+            this._getClinicianData(this.model.id, $el);
+            this.$el.html($el);
+        }
+        else {
+            this.$el.html(template);
+        }
+
         this.contextMenu.setElement(this.$('#h-annotation-context-menu')).render();
         this.pixelmapContextMenu.setElement(this.$('#h-pixelmap-context-menu')).render();
 
@@ -196,8 +213,8 @@ var ImageView = View.extend({
             if (this.viewerWidget) {
                 this.viewerWidget.destroy();
             }
-            /* eslint-disable new-cap */
-            this.viewerWidget = new ViewerWidget.geojs({
+
+            const viewerSettings = {
                 parentView: this,
                 el: this.$('.h-image-view-container'),
                 itemId: this.model.id,
@@ -205,12 +222,68 @@ var ImageView = View.extend({
                 // it is very confusing if this value is smaller than the
                 // AnnotationSelector MAX_ELEMENTS_LIST_LENGTH
                 highlightFeatureSizeLimit: 5000,
-                scale: {position: {bottom: 20, right: 10}}
-            });
+                scale: { position: { bottom: 20, right: 10 } }
+            };
+
+            /* eslint-disable new-cap */
+            // this.viewerWidget = new ViewerWidget.geojs(viewerSettings);
+
+            //             var mayoViewerWidget = MayoImageViewerExtensions(MayoImageViewer);
+            var mayoViewer = new MayoImageViewer(viewerSettings);
+            this.mayoViewer = mayoViewer;
+            console.log(this.mayoViewer);
+            this.viewerWidget = mayoViewer;
+
+            // // use base viewer overlay feature
+
+            //             console.log(mayoViewer);
+
+
+
+
+
+
+
+
+            // if (!this.viewer) {
+            //     return;
+            // }
+            // const conflictingLayers = this.viewer.layers().filter(
+            //     (layer) => layer.id() === overlay.id);
+            // if (conflictingLayers.length > 0) {
+            //     _.each(conflictingLayers, (layer) => {
+            //         this.viewer.deleteLayer(layer);
+            //     });
+            // }
+            // const params = this._generateOverlayLayerParams(response, overlayItemId, overlay);
+            // const layerType = (overlay.type === 'pixelmap') ? 'pixelmap' : 'osm';
+            // const proj = this._getOverlayTransformProjString(overlay);
+            // const overlayLayer = this.viewer.createLayer(layerType, Object.assign({}, params, { id: overlay.id, gcs: proj }));
+            // this.annotationLayer.moveToTop();
+            // this.trigger('g:drawOverlayAnnotation', overlay, overlayLayer);
+            // const featureEvents = geo.event.feature;
+            // overlayLayer.geoOn(
+            //     [
+            //         featureEvents.mousedown,
+            //         featureEvents.mouseup,
+            //         featureEvents.mouseclick,
+            //         featureEvents.mouseoff,
+            //         featureEvents.mouseon,
+            //         featureEvents.mouseover,
+            //         featureEvents.mouseout
+            //     ],
+            //     (evt) => this._onMouseFeature(evt, annotation.elements().get(overlay.id), overlayLayer)
+            // );
+            // this.viewer.scheduleAnimationFrame(this.viewer.draw, true);
+
+
+
+
             // Don't unclamp bounds for the image even if image overlays are present.
             if (this.viewerWidget.setUnclampBoundsForOverlay) {
                 this.viewerWidget.setUnclampBoundsForOverlay(false);
             }
+
             this.trigger('h:viewerWidgetCreated', this.viewerWidget);
 
             // handle annotation mouse events
@@ -232,6 +305,7 @@ var ImageView = View.extend({
                 events.trigger('h:imageOpened', this.model);
                 // store a reference to the underlying viewer
                 this.viewer = this.viewerWidget.viewer;
+                // console.log(this.viewer);
                 this.viewer.interactor().removeAction(geo.geo_action.zoomselect);
 
                 const currentOptions = this.viewer.interactor().options();
@@ -256,7 +330,7 @@ var ImageView = View.extend({
                 this.setBoundsQuery();
 
                 this.viewer._originalZoomRange = this.viewer.zoomRange().max;
-                this.viewer.zoomRange({max: this.viewer.zoomRange().max + this._increaseZoom2x});
+                this.viewer.zoomRange({ max: this.viewer.zoomRange().max + this._increaseZoom2x });
 
                 // update the query string on pan events
                 this.viewer.geoOn(geo.event.pan, () => {
@@ -267,6 +341,61 @@ var ImageView = View.extend({
                 this.viewer.geoOn(geo.event.mousemove, (evt) => {
                     this.showCoordinates(evt);
                 });
+
+                this.getHeatmapIdPromise = restRequest({
+                    url: `mayoHeatmap/getHeatmap/${this.model.id}`,
+                    method: 'GET',
+                    error: null,
+                }).done((result) => {
+                    this.heatmapId = result;
+                    restRequest({
+                        url: `item/${this.heatmapId}/tiles`
+                    }).done((response) => {
+                        // Since overlay layers are created asynchronously, we need
+                        // to ensure that an attempt to draw the same overlays
+                        // happening at roughly the same time does not create extra
+                        // layers
+                        // if (!this.viewer) {
+                        //     return;
+                        // }
+                        // const conflictingLayers = this.viewer.layers().filter(
+                        //     (layer) => layer.id() === overlay.id);
+                        // if (conflictingLayers.length > 0) {
+                        //     _.each(conflictingLayers, (layer) => {
+                        //         this.viewer.deleteLayer(layer);
+                        //     });
+                        // }
+
+                        var overlay = {};
+                        const params = this.mayoViewer._generateOverlayLayerParams(response, this.heatmapId, overlay);
+
+                        console.log(params);
+                        const layerType = (overlay.type === 'pixelmap') ? 'pixelmap' : 'osm';
+                        const proj = this.mayoViewer._getOverlayTransformProjString(overlay);
+                        const overlayLayer = this.viewer.createLayer(layerType, Object.assign({}, params, {id: overlay.id, gcs: proj}));
+                        // this.annotationLayer.moveToTop();
+                        // this.trigger('g:drawOverlayAnnotation', overlay, overlayLayer);
+                        // const featureEvents = geo.event.feature;
+                        // overlayLayer.geoOn(
+                        //     [
+                        //         featureEvents.mousedown,
+                        //         featureEvents.mouseup,
+                        //         featureEvents.mouseclick,
+                        //         featureEvents.mouseoff,
+                        //         featureEvents.mouseon,
+                        //         featureEvents.mouseover,
+                        //         featureEvents.mouseout
+                        //     ],
+                        //     (evt) => this._onMouseFeature(evt, annotation.elements().get(overlay.id), overlayLayer)
+                        // );
+                        // this.viewer.scheduleAnimationFrame(this.viewer.draw, true);
+                    }).fail((response) => {
+                        console.log(response);
+                    });
+                });
+
+
+
 
                 // remove the hidden class from the coordinates display
                 this.$('.h-image-coordinates-container').removeClass('hidden');
@@ -289,6 +418,9 @@ var ImageView = View.extend({
                 this.metadataWidget
                     .setItem(this.model)
                     .setElement('.h-metadata-widget').render();
+
+                this.mayoHeatmapWidget
+                    .setElement('.h-heatmap-widget').render();
 
                 this.metadataPlot
                     .setItem(this.model)
@@ -338,20 +470,21 @@ var ImageView = View.extend({
     openImage(id) {
         /* eslint-disable backbone/no-silent */
         this._resetSelection();
-        this.model.clear({silent: true});
+        this.model.clear({ silent: true });
         delete this.model.parent;
         if (id) {
-            this.model.set({_id: id}).fetch().then(() => {
+            this.model.set({ _id: id }).fetch().then(() => {
                 this._setImageInput();
                 return null;
             });
         } else {
-            this.model.set({_id: null});
+            this.model.set({ _id: null });
             this.render();
             this._openId = null;
             events.trigger('h:imageOpened', null);
         }
     },
+
     /**
      * Set any input image parameters to the currently open image.
      * The jobs endpoints expect file id's rather than item id's,
@@ -443,14 +576,47 @@ var ImageView = View.extend({
             }
         });
 
-        return promise.then((file) => {
-            _.each(this.controlPanel.models(), (model) => {
-                if (model.get('type') === 'image') {
-                    model.set('value', file, {trigger: true});
-                }
+        var clinicianDataPromise = this._getClinicianData(this.model.id, $("#ms-main"))
+        return clinicianDataPromise.then(() => {
+            return promise.then((file) => {
+                _.each(this.controlPanel.models(), (model) => {
+                    if (model.get('type') === 'image') {
+                        model.set('value', file, { trigger: true });
+                    }
+                });
+
+                return null;
             });
-            return null;
+        })
+
+    },
+
+    _getClinicianData(itemId, $rootElement) {
+        return restRequest({
+            url: 'clinicianData/getData/' + itemId
+        }).then((clinicianData) => {
+            if (clinicianData) {
+                Object.entries(clinicianData).forEach(([key, value]) => {
+                    var $el = $rootElement.find("#ms-" + key);
+                    if ($el.length) {
+                        $el.val(value);
+                    }
+                });
+            }
         });
+    },
+
+    _saveClinicianData() {
+        var clinicianData = $('form#ms-main').serializeArray();
+        this.saveClinicianPromise = restRequest({
+            url: `clinicianData/saveData/${this.model.id}`,
+            method: 'POST',
+            error: null,
+            data: clinicianData
+        }).done((result) => {
+        });
+
+        return false;
     },
 
     _getDefaultOutputFolder() {
@@ -513,7 +679,7 @@ var ImageView = View.extend({
 
     _closeAnalysis(evt) {
         evt.preventDefault();
-        router.setQuery('analysis', null, {trigger: false});
+        router.setQuery('analysis', null, { trigger: false });
         this.controlPanel.$el.addClass('hidden');
         events.trigger('query:analysis', null);
     },
@@ -533,7 +699,7 @@ var ImageView = View.extend({
             bottom = bounds.bottom.toFixed();
             router.setQuery('bounds', [
                 left, top, right, bottom, rotation
-            ].join(','), {replace: true});
+            ].join(','), { replace: true });
         }
     },
 
@@ -558,7 +724,7 @@ var ImageView = View.extend({
 
     _updatePixelmapElements(pixelmapElements, annotation) {
         const groups = new StyleCollection();
-        const defaultStyle = new StyleModel({id: this._defaultGroup});
+        const defaultStyle = new StyleModel({ id: this._defaultGroup });
         groups.fetch().done(() => {
             if (!groups.has(this._defaultGroup)) {
                 groups.add(defaultStyle.toJSON());
@@ -626,9 +792,9 @@ var ImageView = View.extend({
         });
 
         // move the default category to index 0 and adjust data array if needed
-        const originalDefaultIndex = _.findIndex(newCategories, {label: this._defaultGroup});
-        const updatedCategories = _.where(newCategories, {label: this._defaultGroup})
-            .concat(_.reject(newCategories, {label: this._defaultGroup}));
+        const originalDefaultIndex = _.findIndex(newCategories, { label: this._defaultGroup });
+        const updatedCategories = _.where(newCategories, { label: this._defaultGroup })
+            .concat(_.reject(newCategories, { label: this._defaultGroup }));
         pixelmap.set('categories', updatedCategories);
         if (originalDefaultIndex !== 0) {
             const originalData = pixelmap.get('values');
@@ -667,7 +833,7 @@ var ImageView = View.extend({
                     return null;
                 }
                 // update pixelmaps based on styles
-                const pixelmapElements = annotation.elements().where({type: 'pixelmap'});
+                const pixelmapElements = annotation.elements().where({ type: 'pixelmap' });
                 if (pixelmapElements.length > 0) {
                     this._updatePixelmapElements(pixelmapElements, annotation);
                     return null;
@@ -738,12 +904,12 @@ var ImageView = View.extend({
                     closed = false;
                 }
                 if (pts.length === 1) {
-                    elements.push({type: 'point', center: pts[0]});
+                    elements.push({ type: 'point', center: pts[0] });
                 } else {
-                    elements.push({type: 'polyline', closed: closed, points: pts});
+                    elements.push({ type: 'polyline', closed: closed, points: pts });
                 }
             });
-            this.showRegion({elements: elements});
+            this.showRegion({ elements: elements });
         }
     },
 
@@ -771,7 +937,7 @@ var ImageView = View.extend({
         }
 
         this.viewerWidget.removeAnnotation(
-            new AnnotationModel({_id: 'region-selection'})
+            new AnnotationModel({ _id: 'region-selection' })
         );
         if (!region) {
             return;
@@ -819,7 +985,7 @@ var ImageView = View.extend({
                 }
             });
         }
-        this.viewerWidget.drawAnnotation(annotation, {fetch: false});
+        this.viewerWidget.drawAnnotation(annotation, { fetch: false });
     },
 
     showCoordinates(evt) {
@@ -835,7 +1001,7 @@ var ImageView = View.extend({
         if (annotationId === 'region-selection' || annotationId === 'selected') {
             return;
         }
-        this._lastMouseOnElement = {element, annotationId};
+        this._lastMouseOnElement = { element, annotationId };
         if (!this.annotationSelector.interactiveMode()) {
             return;
         }
@@ -898,7 +1064,7 @@ var ImageView = View.extend({
     _getCategoryIndexFromStyleGroup(annotationElement, styleGroup) {
         const categories = annotationElement.get('categories');
         const groupId = styleGroup.get('id');
-        const newIndex = _.findIndex(categories, {label: groupId});
+        const newIndex = _.findIndex(categories, { label: groupId });
         return (newIndex < 0) ? 0 : newIndex;
     },
 
@@ -923,7 +1089,7 @@ var ImageView = View.extend({
     },
 
     _handlePixelmapContextMenu(pixelmap, dataIndex, group) {
-        const categoryIndex = _.findIndex(pixelmap.get('categories'), {label: group});
+        const categoryIndex = _.findIndex(pixelmap.get('categories'), { label: group });
         const pixelmapLayer = this.viewer.layers().find((layer) => layer.id() === pixelmap.get('id'));
         if (!pixelmapLayer || dataIndex < 0) {
             return;
@@ -987,7 +1153,7 @@ var ImageView = View.extend({
                     }
                     left = Math.max(left, 0);
 
-                    menu.css({left, top});
+                    menu.css({ left, top });
                     this._pixelmapContextMenuActive = true;
                 }, 1);
             });
@@ -1043,7 +1209,7 @@ var ImageView = View.extend({
         }
 
         window.requestAnimationFrame(() => {
-            const {element, annotationId} = this._processMouseClickQueue();
+            const { element, annotationId } = this._processMouseClickQueue();
             if (!evt.mouse.modifiers.shift && (!evt.sourceEvent || !evt.sourceEvent.handled)) {
                 if (evt.mouse.buttonsDown.right) {
                     this._openContextMenu(element.annotation.elements().get(element.id), annotationId, evt);
@@ -1079,7 +1245,7 @@ var ImageView = View.extend({
                 }
             }
         }
-        this._mouseClickQueue.push({element, annotationId, value: minimumDistance});
+        this._mouseClickQueue.push({ element, annotationId, value: minimumDistance });
     },
 
     _processMouseClickQueue(evt) {
@@ -1245,7 +1411,7 @@ var ImageView = View.extend({
                         // a line or polygon
                         if (
                             (drawingType === 'polygon' && annotation.options('vertices').length > 2) ||
-                        (drawingType === 'line' && annotation.options('vertices').length > 1)
+                            (drawingType === 'line' && annotation.options('vertices').length > 1)
                         ) {
                             annotation.state(geo.annotation.state.done).modified().draw();
                         }
@@ -1308,13 +1474,13 @@ var ImageView = View.extend({
                 };
                 found = this.getElementsInBox(boundingBox);
             } else {
-                const polygon = coord.slice(0, coord.length / 2).map((c, idx) => ({x: coord[idx * 2], y: coord[idx * 2 + 1], z: 0}));
+                const polygon = coord.slice(0, coord.length / 2).map((c, idx) => ({ x: coord[idx * 2], y: coord[idx * 2 + 1], z: 0 }));
                 found = this.getElementsInPolygon(polygon);
             }
-            found.forEach(({element}, idx) => this._selectElement(element, {silent: idx !== found.length - 1}));
+            found.forEach(({ element }, idx) => this._selectElement(element, { silent: idx !== found.length - 1 }));
             if (this.selectedElements.length > 0 && this._currentMousePosition && this.autoRegionContextMenu) {
                 // fake an open context menu
-                const {element, annotationId} = found[0];
+                const { element, annotationId } = found[0];
                 this._openContextMenu(element, annotationId, {
                     mouse: this._currentMousePosition
                 }, true);
@@ -1332,10 +1498,10 @@ var ImageView = View.extend({
 
     getElementsInBox(boundingBox) {
         const poly = [
-            {x: boundingBox.left, y: boundingBox.top + boundingBox.height},
-            {x: boundingBox.left + boundingBox.width, y: boundingBox.top + boundingBox.height},
-            {x: boundingBox.left + boundingBox.width, y: boundingBox.top},
-            {x: boundingBox.left, y: boundingBox.top}
+            { x: boundingBox.left, y: boundingBox.top + boundingBox.height },
+            { x: boundingBox.left + boundingBox.width, y: boundingBox.top + boundingBox.height },
+            { x: boundingBox.left + boundingBox.width, y: boundingBox.top },
+            { x: boundingBox.left, y: boundingBox.top }
         ];
         return this.getElementsInPolygon(poly);
     },
@@ -1343,7 +1509,7 @@ var ImageView = View.extend({
     getElementsInPolygon(poly) {
         const results = [];
         this.viewerWidget.featureLayer.features().forEach((feature) => {
-            const r = feature.polygonSearch(poly, {partial: false});
+            const r = feature.polygonSearch(poly, { partial: false });
             r.found.forEach((feature) => {
                 const annotationId = feature.properties ? feature.properties.annotation : null;
                 const element = feature.properties ? feature.properties.element : null;
@@ -1402,7 +1568,7 @@ var ImageView = View.extend({
             }
             left = Math.max(left, 0);
 
-            menu.css({left, top});
+            menu.css({ left, top });
             if (this.popover.collection.length) {
                 this.popover.collection.reset();
             }
@@ -1486,7 +1652,7 @@ var ImageView = View.extend({
 
     _redrawSelection() {
         this.viewerWidget.removeAnnotation(this.selectedAnnotation);
-        this.viewerWidget.drawAnnotation(this.selectedAnnotation, {fetch: false});
+        this.viewerWidget.drawAnnotation(this.selectedAnnotation, { fetch: false });
     },
 
     _selectElement(element, options) {
@@ -1544,7 +1710,7 @@ var ImageView = View.extend({
         this.activeAnnotation.elements().forEach((element) => {
             if (element.get('group') === group || (group === this._defaultGroup && element.get('group') === undefined)) {
                 if (last !== undefined) {
-                    this._selectElement(last, {silent: true});
+                    this._selectElement(last, { silent: true });
                 }
                 last = element;
             }
@@ -1561,9 +1727,9 @@ var ImageView = View.extend({
             _.each(elements, (element) => { /* eslint-disable backbone/no-silent */
                 const annotationElement = annotation.elements().get(element.id);
                 // silence the event because we want to make one save call for each annotation.
-                annotationElement.set(element.toJSON(), {silent: true});
+                annotationElement.set(element.toJSON(), { silent: true });
                 if (!element.get('group')) {
-                    annotationElement.unset('group', {silent: true});
+                    annotationElement.unset('group', { silent: true });
                 }
             });
             if (!elements.length) {
@@ -1579,7 +1745,7 @@ var ImageView = View.extend({
         _.each(groupedAnnotations, (elements, annotationId) => { /* eslint-disable backbone/no-silent */
             // silence the event because we want to make one save call for each annotation.
             const elementsCollection = this.annotations.get(annotationId).elements();
-            elementsCollection.remove(elements, {silent: true});
+            elementsCollection.remove(elements, { silent: true });
             elementsCollection.trigger('reset', elementsCollection);
         });
     },
@@ -1592,7 +1758,7 @@ var ImageView = View.extend({
                     this._resetSelection();
                 } else {
                     elements.forEach((el, idx) => {
-                        this.selectedElements.remove(el.id, {silent: idx !== elements.length - 1});
+                        this.selectedElements.remove(el.id, { silent: idx !== elements.length - 1 });
                     });
                 }
             }
@@ -1682,7 +1848,7 @@ var ImageView = View.extend({
                             }
                         }
                         val.annotationGroups.groups.forEach((group) => {
-                            group.label = group.label ? {value: group.label} : undefined;
+                            group.label = group.label ? { value: group.label } : undefined;
                             groups.add(group);
                         });
                         groups.each((model) => { model.save(); });

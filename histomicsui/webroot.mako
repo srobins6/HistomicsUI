@@ -36,5 +36,6 @@
     % for plugin in pluginJs:
     <script src="${staticPublicPath}/built/plugins/${plugin}/plugin.min.js"></script>
     % endfor
+    <script src="${staticPublicPath}/built/plugins/large_image/extra/geojs.js"></script>
   </body>
 </html>

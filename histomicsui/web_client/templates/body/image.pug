@@ -1,4 +1,75 @@
 .h-image-body(tabindex=-1)
+  form#ms-main
+    div.ms-sidebar
+      div.form-group
+        label(for="ms-primaryTumorDesignation") Primary Tumor Differentiation
+        select#ms-primaryTumorDesignation.form-control(name="primaryTumorDesignation")
+          option(value="" selected="") Choose...  
+          //- add validation for the choose selects
+          option(value="diff_1") Well Differentiated
+          option(value="diff_2") Moderately Differentiated
+          option(value="diff_3") Poorly Differentiated
+          option(value="diff_4") Undifferentiated
+          option(value="diff_5") Uncertain \(Well to Moderately Differentiated\)
+          option(value="diff_6") Uncertain \(Moderate to Poorly Differentiated\)
+          option(value="diff_7") Uncertain \(Likely Well Differentiated\)
+          option(value="diff_8") Uncertain \(Likely Moderately Differentiated\)
+          option(value="diff_9") Uncertain \(Likely Poorly Differentiated\)
+          option(value="diff_10") Could not be assessed
+      div.form-group
+        label(for="primaryTumorDepth") Primary Tumor Depth (in mm)
+        input#ms-primaryTumorDepth.form-control(type="number" placeholder="Depth in mm", name="primaryTumorDepth")
+      div.form-group
+        label(for="ms-primaryTumorDepthInvasion") Primary Tumor Depth of Invasion
+        select#ms-primaryTumorDepthInvasion.form-control(name="primaryTumorDepthInvasion")
+          option(value="" selected="") Choose...
+          option(value="dermis") Dermis
+          option(value="fat") Subcutaneous Fat
+          option(value="cartilage") Cartilage
+          option(value="muscle") Muscle
+          option(value="fascia") Fascia
+          option(value="bone") Bone
+          option(value="unknown") Unknown
+          option(value="atleastdermis") At Least Dermis
+          option(value="transectedatdermis") But Transected at Dermis
+      div.form-group
+        label(for="ms-primaryTumorTransected") Primary Tumor Transected at Base
+        select#ms-primaryTumorTransected.form-control(name="primaryTumorTransected")
+          option(value="" selected="") Choose...
+          option(value="yes") Yes
+          option(value="no") No
+          option(value="notassessed") Could not be assessed
+      div.form-group
+        label(for="ms-acantholyticHistologicalPattern") Acantholytic Histological Pattern
+        select#ms-acantholyticHistologicalPattern.form-control(name="acantholyticHistologicalPattern")
+          option(value="" selected="") Choose...
+          option(value="yes") Yes
+          option(value="no") No
+          option(value="notassessed") Could not be assessed
+      div.form-group
+        label(for="bowenoidHistologicalPattern") Bowenoid Histological Pattern
+        select#ms-bowenoidHistologicalPattern.form-control(name="bowenoidHistologicalPattern")
+          option(value="" selected="") Choose...
+          option(value="yes") Yes
+          option(value="no") No
+          option(value="notassessed") Could not be assessed
+      div.form-group
+        label(for="ms-perineuralInvasion") Perineural Invasion
+        select#ms-perineuralInvasion.form-control(name="perineuralInvasion")
+          option(value="" selected="") Choose...
+          option(value="yes") Yes
+          option(value="no") No
+          option(value="notassessed") Could not be assessed
+      div.form-group
+        label(for="ms-nerveDiameter") Diameter of Nerve Involved (in mm)
+        input#ms-nerveDiameter.form-control(type="number" placeholder="Depth in mm", name="nerveDiameter")
+      div.form-group
+        label(for="ms-slidePassesQc") Slide Passes QC
+        textarea#ms-slidePassesQc.form-control(rows="6", placeholder="Please mention Yes or No. If it does not pass QC, please include the reason (not enough tumor; resolution/focus inadequate; staining abnormalities)", name="slidePassesQc")
+      div.form-group
+        label(for="ms-clinicalNotes") Clinical Notes
+        textarea#ms-clinicalNotes.form-control(rows="6", placeholder="Enter Diagnostic Details (Optional)" name="clinicalNotes")
+      button#save-clinician-data-button.btn.btn-primary(type="submit") Save
   .h-image-view-body
     .image-viewer-loading.hidden
       span.icon-spin1.animate-spin(title="Loading image")
@@ -12,6 +83,7 @@
     #h-overview-panel.h-overview-widget.s-panel
     #h-frame-selector-panel.h-frame-selector-widget.s-panel
     #h-zoom-panel.h-zoom-widget.s-panel
+    #h-heatmap-panel.h-heatmap-widget.s-panel
     #h-metadata-panel.h-metadata-widget.s-panel
     #h-metadataplot-panel.h-metadata-plot.s-panel
     #h-annotation-panel.h-annotation-selector.s-panel
